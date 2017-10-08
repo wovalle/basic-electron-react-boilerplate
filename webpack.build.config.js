@@ -5,50 +5,48 @@ const BabiliPlugin = require('babili-webpack-plugin');
 const ExtractTextPlugin = require('extract-text-webpack-plugin');
 
 // Config directories
-const SRC_DIR = path.resolve(__dirname, 'src');
-const OUTPUT_DIR = path.resolve(__dirname, 'dist');
+const srcDir = path.resolve(__dirname, 'src');
+const outDir = path.resolve(__dirname, 'dist');
 
-// Any directories you will be adding code/files into, need to be added to this array so webpack will pick them up
-const defaultInclude = [SRC_DIR];
+const extractSass = new ExtractTextPlugin({
+  filename: "[name].[contenthash].css",
+  disable: process.env.NODE_ENV === "development"
+});
 
 module.exports = {
-  entry: SRC_DIR + '/index.js',
+  entry: srcDir + '/index.js',
   output: {
-    path: OUTPUT_DIR,
+    path: outDir,
     publicPath: './',
-    filename: 'bundle.js'
+    filename: '[name].[chunkhash].js'
   },
   module: {
     rules: [
-      {
-        test: /\.css$/,
-        use: ExtractTextPlugin.extract({
-          fallback: 'style-loader',
-          use: 'css-loader'
-        }),
-        include: defaultInclude
-      },
-      {
-        test: /\.jsx?$/,
-        use: [{ loader: 'babel-loader' }],
-        include: defaultInclude
-      },
+      { test: /\.jsx?$/, loader: 'babel-loader' },
       {
         test: /\.(jpe?g|png|gif)$/,
         use: [{ loader: 'file-loader?name=img/[name]__[hash:base64:5].[ext]' }],
-        include: defaultInclude
       },
       {
         test: /\.(eot|svg|ttf|woff|woff2)$/,
         use: [{ loader: 'file-loader?name=font/[name]__[hash:base64:5].[ext]' }],
-        include: defaultInclude
-      }
+      },
+      {
+        test: /\.scss$/,
+        use: extractSass.extract({
+            use: [
+              { loader: "css-loader" },
+              { loader: "sass-loader" }
+            ],
+            fallback: "style-loader"
+        })
+    }
     ]
   },
   target: 'electron-renderer',
   plugins: [
     new HtmlWebpackPlugin(),
-    new ExtractTextPlugin('bundle.css'),
+    extractSass,
     new webpack.DefinePlugin({
       'process.env.NODE_ENV': JSON.stringify('production')
     }),
@@ -59,5 +57,8 @@ module.exports = {
     children: false,
     chunks: false,
     modules: false
-  }
+  },
+  resolve: {
+    extensions: ['.js', '.jsx'],
+  },
 };
